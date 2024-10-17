@@ -1,0 +1,11 @@
+name: sed_biochem
+channels:
+  - conda-forge
+dependencies:
+  - flopy
+  - matplotlib
+  - pip
+  - scipy
+  - numpy
+  - numba
+  - cmcrameri
