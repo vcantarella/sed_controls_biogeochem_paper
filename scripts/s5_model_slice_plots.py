@@ -75,6 +75,23 @@ vx[mask == 0] = np.nan
 vy[mask == 0] = np.nan
 vz[mask == 0] = np.nan
 
+### Plotting the model cross section:
+fig0, ax0 = plt.subplots(figsize=(7.2,4.8))
+ax0.set_aspect("equal")
+plain_map = flopy.plot.PlotMapView(model=gwf, layer=0)
+dy = gwf.dis.delc.array
+plain_map.plot_grid(lw=0.05)
+color_array = facies[0, :, :]*0
+color_array[int(nrow/2), :] = 1
+plain_map.plot_array(color_array, cmap="Greys", masked_values=[0], alpha=1)
+hline = plt.axhline(y=np.cumsum(dy[0:int(nrow/2)+1])[-1], color="crimson", lw=2.2)
+ax0.set_xlabel("x [m]")
+ax0.set_ylabel("y [m]")
+ax0.set_title("Models' cross section location")
+fig0.show()
+fig0.savefig("model_cross_section_location.png", dpi=1000, bbox_inches='tight')
+
+
 fig1, axs_d = plt.subplot_mosaic([["a. facies stratified", "b. facies 3-D facies-based"],
                                   ["c. $K$ stratified", "d. $K$ 3-D facies-based"],
                                   ["e. TOC stratified", "f. TOC 3-D facies-based"]],
