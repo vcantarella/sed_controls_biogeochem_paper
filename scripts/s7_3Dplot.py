@@ -5,17 +5,12 @@ import matplotlib.pyplot as plt
 import matplotlib as mpl
 import cmcrameri as cm
 import matplotlib.ticker as mticker
-import particle_track
 import pyvista as pv
 import sys
 sys.path.append(os.path.join("..","particle_track"))
 from particle_track import pollock_v2
 from s3_particle_track_TOC_model import vectorized_p
 
-
-
-hatches = {11:"o",2:".",4:"",6:"..",7:"..",8:"",9:"",12:"oo", 10:""}
-labels = {11:"T1",2:"T2",4:"T4",6:"T6",7:"T7",8:"T8",9:"T9",12:"G1",10:"C1"}
 ## Model 1: facies model
 # loading datasets from the previous models:
 facies = np.load("facies_v7.npy")
@@ -35,15 +30,19 @@ ncol = gwf.modelgrid.ncol
 cellcenters = gwf.modelgrid.xyzcellcenters
 # get the ibound array
 ibound = gwf.dis.idomain.array
-z = cellcenters[2][:,:,:]
-z_center = z[:,int(nrow/2),-1]
-ibound_center = ibound[:,int(nrow/2),-1]
-z_center = z_center[ibound_center == 1]
-x = np.repeat([899.9], len(z_center))
-y = np.repeat([300], len(z_center))
+np.random.seed(69)
+random_indexes_row = np.random.choice(np.arange(0, nrow), 30)
+randow_indexes_lay = np.random.choice(np.arange(0, nlay), 30)
+z = cellcenters[2][randow_indexes_lay,random_indexes_row,-1]
+ibound_center = ibound[randow_indexes_lay,random_indexes_row,-1]
+z_center = z[ibound_center == 1]
+x = cellcenters[0][random_indexes_row,-1]
+x = x[ibound_center == 1]
+y = cellcenters[1][random_indexes_row,-1]
+y = y[ibound_center == 1]
 
-layer = np.arange(0, nlay, 1)[ibound_center == 1]
-row = np.repeat([int(nrow/2)], len(z_center))
+layer = randow_indexes_lay[ibound_center == 1]
+row = random_indexes_row[ibound_center == 1]
 col = np.repeat([ncol-1], len(z_center))
 points = np.stack([x,y,z_center, layer, row, col]).T
 
@@ -81,6 +80,7 @@ lines, vertices = process_points(pt, facies, np.load(os.path.join(ws,"f_.npy")))
 vertices = np.vstack(vertices)
 lines = np.hstack(lines)
 mesh = pv.PolyData(vertices, lines=lines)
+tube = mesh.tube(radius=0.06)
 
 
 delc, delr, delz = gwf.modelgrid.delc, gwf.modelgrid.delr, gwf.modelgrid.delz
@@ -116,15 +116,55 @@ bounds = [2,4,6,7,8,9,10,11,12,13]
 # Create a normalization object
 horizontal_slice = pvgrid.slice_orthogonal(x=0, y=0, z=max(zcorn)/3+0.2)
 vertical_slice = pvgrid.slice_orthogonal(x=0, y=max(ycorn)/2, z=0)
-p = pv.Plotter()
-lt = pv.LookupTable(values = pyvista_colors, value_range=[2,12])
-lt.below_range_color = pv.Color('grey', opacity=0.5)
-lt.above_range_color = pv.Color('grey', opacity=0.5)
+p = pv.Plotter(lighting="three lights")
+# lt = pv.LookupTable(values = pyvista_colors, value_range=[2,12])
+# lt.below_range_color = pv.Color('grey', opacity=0.5)
+# lt.above_range_color = pv.Color('grey', opacity=0.5)
 #label = pv.Label("Cross section", position = [450, 300, 12])
-rect = pv.Rectangle(points = [[0,max(ycorn)/2,0],[max(xcorn),max(ycorn)/2,0],[max(xcorn),max(ycorn)/2,max(zcorn)]])
+# rect = pv.Rectangle(points = [[0,max(ycorn)/2,0],[max(xcorn),max(ycorn)/2,0],[max(xcorn),max(ycorn)/2,max(zcorn)]])
 p.add_mesh(horizontal_slice, scalars="facies", show_edges=False, cmap=my_cmap, clim=[2,12], show_scalar_bar=False, opacity=0.95)
-p.add_mesh(vertical_slice, scalars="facies", show_edges=False, cmap=my_cmap, clim=[2,12], show_scalar_bar=False, opacity=0.95)
+p.add_mesh(vertical_slice, scalars="facies", show_edges=False, cmap=my_cmap, clim=[2,12], show_scalar_bar=False, opacity=1)
 #p.add_actor(label)
-p.add_mesh(mesh.tube(radius=0.3), color="crimson", opacity=0.6)
+#show axis
+p.add_axes()
+p.add_mesh(tube, color="darkblue", opacity=1)
 p.set_scale(1, 1, 30)
+light = pv.Light()
+light.set_direction_angle(5, 30)
+p.add_light(light)
+def callback(x):
+    print(x) # not really relevant here
+    print(f'camera position: {p.camera.position}')
+    print(f'camera az,rol,elev: {p.camera.azimuth},{p.camera.roll},\
+    {p.camera.elevation}')
+    print(f'camera vi   ew angle, focal point: {p.camera.view_angle,p.camera.focal_point}')
+# now set the camera parameters in the code
+p.track_click_position(callback)
 p.show()
+
+
+p = pv.Plotter(lighting="three lights")
+p.add_mesh(horizontal_slice, scalars="facies", show_edges=False, cmap=my_cmap,
+    clim=[2,12], show_scalar_bar=False, opacity=0.95, smooth_shading=True)
+p.add_mesh(vertical_slice, scalars="facies", show_edges=False, cmap=my_cmap,
+    clim=[2,12], show_scalar_bar=False, opacity=1, smooth_shading=True)
+#p.add_actor(label)
+#show axis
+p.add_axes()
+p.add_mesh(tube, color="darkblue", opacity=1, specular=0.5, ambient=0.5)
+p.set_scale(1, 1, 30)
+
+light = pv.Light(position=(141.21798700454443, -527.9004474461126, 1083.8706136817648), intensity=0.2)
+#light.set_direction_angle(0, 75)
+p.add_light(light)
+p.camera.position = (141.21798700454443, -527.9004474461126, 1083.8706136817648)
+p.camera.azimuth = 0
+p.camera.roll = 13.663714156033008
+p.camera.elevation = 0
+p.enable_anti_aliasing('msaa', multi_samples=64)
+p.camera.view_angle = 30
+p.camera.focal_point = (425.18971165459675, 268.8758181557089, 105.20510692642489)
+p.save_graphic("3D_plot.pdf")
+p.save_graphic("3D_plot.svg")
+p.save_graphic("3D_plot.eps")
+p.show(screenshot='3D_plot.png')
