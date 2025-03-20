@@ -31,8 +31,8 @@ cellcenters = gwf.modelgrid.xyzcellcenters
 # get the ibound array
 ibound = gwf.dis.idomain.array
 np.random.seed(69)
-random_indexes_row = np.random.choice(np.arange(0, nrow), 30)
-randow_indexes_lay = np.random.choice(np.arange(0, nlay), 30)
+random_indexes_row = np.random.choice(np.arange(0, nrow), 100)
+randow_indexes_lay = np.random.choice(np.arange(0, nlay), 100)
 z = cellcenters[2][randow_indexes_lay,random_indexes_row,-1]
 ibound_center = ibound[randow_indexes_lay,random_indexes_row,-1]
 z_center = z[ibound_center == 1]
@@ -80,7 +80,7 @@ lines, vertices = process_points(pt, facies, np.load(os.path.join(ws,"f_.npy")))
 vertices = np.vstack(vertices)
 lines = np.hstack(lines)
 mesh = pv.PolyData(vertices, lines=lines)
-tube = mesh.tube(radius=0.06)
+tube = mesh.tube(radius=2)
 
 
 delc, delr, delz = gwf.modelgrid.delc, gwf.modelgrid.delr, gwf.modelgrid.delz
@@ -114,24 +114,37 @@ my_cmap = mpl.colors.ListedColormap(pyvista_colors)
 cmap = mpl.colors.ListedColormap(list(colors_full.values()))
 bounds = [2,4,6,7,8,9,10,11,12,13]
 # Create a normalization object
-horizontal_slice = pvgrid.slice_orthogonal(x=0, y=0, z=max(zcorn)/3+0.2)
+z_scale = 7
+pvgrid = pvgrid.scale([1,1,z_scale])
+horizontal_slice = pvgrid.slice_orthogonal(x=0, y=0, z=max(zcorn)*z_scale/3+0.2)
 vertical_slice = pvgrid.slice_orthogonal(x=0, y=max(ycorn)/2, z=0)
-p = pv.Plotter(lighting="three lights")
+cross_slice = pvgrid.slice_orthogonal(x=max(xcorn)/2, y=0, z=0)
+
+
+vertices = np.vstack(vertices)
+vertices[:, 2] = vertices[:, 2]*z_scale
+lines = np.hstack(lines)
+mesh = pv.PolyData(vertices, lines=lines)
+tube = mesh.tube(radius=2)
+
+p = pv.Plotter()
 # lt = pv.LookupTable(values = pyvista_colors, value_range=[2,12])
 # lt.below_range_color = pv.Color('grey', opacity=0.5)
 # lt.above_range_color = pv.Color('grey', opacity=0.5)
 #label = pv.Label("Cross section", position = [450, 300, 12])
 # rect = pv.Rectangle(points = [[0,max(ycorn)/2,0],[max(xcorn),max(ycorn)/2,0],[max(xcorn),max(ycorn)/2,max(zcorn)]])
-p.add_mesh(horizontal_slice, scalars="facies", show_edges=False, cmap=my_cmap, clim=[2,12], show_scalar_bar=False, opacity=0.95)
-p.add_mesh(vertical_slice, scalars="facies", show_edges=False, cmap=my_cmap, clim=[2,12], show_scalar_bar=False, opacity=1)
+p.add_mesh(horizontal_slice, scalars="facies", show_edges=False, cmap=my_cmap, clim=[2,12], show_scalar_bar=False, opacity=0.75)
+p.add_mesh(vertical_slice, scalars="facies", show_edges=False, cmap=my_cmap, clim=[2,12], show_scalar_bar=False, opacity=0.75)
+# p.add_mesh(horizontal_slice2, scalars="facies", show_edges=False, cmap=my_cmap, clim=[2,12], show_scalar_bar=False, opacity=0.75)
+p.add_mesh(cross_slice, scalars="facies", show_edges=False, cmap=my_cmap, clim=[2,12], show_scalar_bar=False, opacity=0.75)
 #p.add_actor(label)
 #show axis
 p.add_axes()
-p.add_mesh(tube, color="darkblue", opacity=1)
-p.set_scale(1, 1, 30)
-light = pv.Light()
-light.set_direction_angle(5, 30)
-p.add_light(light)
+p.add_mesh(tube, color="lightblue", opacity=1)
+#p.set_scale(1, 1, 1)
+# light = pv.Light()
+# light.set_direction_angle(5, 30)
+# p.add_light(light)
 def callback(x):
     print(x) # not really relevant here
     print(f'camera position: {p.camera.position}')
@@ -145,26 +158,35 @@ p.show()
 
 p = pv.Plotter(lighting="three lights")
 p.add_mesh(horizontal_slice, scalars="facies", show_edges=False, cmap=my_cmap,
-    clim=[2,12], show_scalar_bar=False, opacity=0.95, smooth_shading=True)
+    clim=[2,12], show_scalar_bar=False, opacity=0.6, smooth_shading=True)
 p.add_mesh(vertical_slice, scalars="facies", show_edges=False, cmap=my_cmap,
-    clim=[2,12], show_scalar_bar=False, opacity=1, smooth_shading=True)
+    clim=[2,12], show_scalar_bar=False, opacity=0.6, smooth_shading=True)
+p.add_mesh(cross_slice, scalars="facies", show_edges=False, cmap=my_cmap,
+    clim=[2,12], show_scalar_bar=False, opacity=0.6, smooth_shading=True)
 #p.add_actor(label)
 #show axis
-p.add_axes()
-p.add_mesh(tube, color="darkblue", opacity=1, specular=0.5, ambient=0.5)
-p.set_scale(1, 1, 30)
+#p.add_axes()
+p.add_mesh(tube, color="lightsteelblue", opacity=1,label="flowlines")
+# legend = ["flowlines", "lightsteelblue", pv.Tube]
+p.add_legend()
 
-light = pv.Light(position=(141.21798700454443, -527.9004474461126, 1083.8706136817648), intensity=0.2)
+light = pv.Light(position=(-44.93262274069701, -562.1735877035144, 891.4477317331155), intensity=0.2)
 #light.set_direction_angle(0, 75)
 p.add_light(light)
-p.camera.position = (141.21798700454443, -527.9004474461126, 1083.8706136817648)
+p.camera.position = (-44.93262274069701, -562.1735877035144, 891.4477317331155)
 p.camera.azimuth = 0
-p.camera.roll = 13.663714156033008
+p.camera.roll = 35.74549756268309
 p.camera.elevation = 0
 p.enable_anti_aliasing('msaa', multi_samples=64)
 p.camera.view_angle = 30
-p.camera.focal_point = (425.18971165459675, 268.8758181557089, 105.20510692642489)
+p.camera.focal_point = (443.5874591386224, 298.77606179629225, -137.37247739174023)
 p.save_graphic("3D_plot.pdf")
 p.save_graphic("3D_plot.svg")
 p.save_graphic("3D_plot.eps")
+
+def callback_print(x):
+    p.save_graphic("3D_plot_click.svg", raster=False)
+    p.screenshot("3D_plot_click.png", transparent_background=True, scale = 10)
+# now set the camera parameters in the code
+p.track_click_position(callback_print)
 p.show(screenshot='3D_plot.png')
